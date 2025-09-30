@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from routes import router  # 导入路由
-from database import create_connection
+from database import get_db_connection
 
 # FastAPI 应用
 app = FastAPI(title="My API", version="1.0.0")
@@ -25,7 +25,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(router)
 
 # 数据库连接(全局)
-connection = create_connection()
+connection = get_db_connection()
 
 
 if __name__ == "__main__":
