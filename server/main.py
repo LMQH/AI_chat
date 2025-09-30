@@ -9,7 +9,7 @@ from database import get_db_connection
 # FastAPI 应用
 app = FastAPI(title="My API", version="1.0.0")
 
-# CORS
+# CORS，允许所有源
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

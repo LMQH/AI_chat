@@ -9,26 +9,31 @@ from llm_utils import llm_stream, llm
 router = APIRouter()
 
 
+# 测试路由
 @router.get("/test1")
 def test1():
     return {"message": "Hello, World!"}
 
 
+# 测试路由，测试参数
 @router.get("/test2")
 def test2(count: int, chat_text: str):
     return {"count": count, "chat_text": chat_text}
 
 
+# 定义模型
 class Mydata(BaseModel):
     count: str
     chat_text: str
 
 
+# 测试路由，测试参数
 @router.post("/test3")
 def test3(data: Mydata):
     return {"data": data}
 
 
+# 测试路由，测试上传文件
 @router.post("/test4")
 async def test4(img1: UploadFile):
     try:
@@ -40,6 +45,7 @@ async def test4(img1: UploadFile):
         raise HTTPException(status_code=500, detail=f"文件保存失败: {e}")
 
 
+# 简单聊天
 @router.get("/chat")
 def chat(text: str):
     try:
@@ -55,6 +61,7 @@ def extract_clean_title(raw_title: str) -> str:
     return raw_title.strip().strip('"\'').replace('\n', '').replace('\r', '')[:100]
 
 
+# 流式对话
 @router.get("/stream")
 def stream(text: str, subjectid: int):
     try:
@@ -92,6 +99,7 @@ def stream(text: str, subjectid: int):
         raise HTTPException(status_code=500, detail=f"流式对话失败: {e}")
 
 
+# 获取主题
 @router.get("/get_subject")
 def get_subject():
     try:
@@ -104,6 +112,7 @@ def get_subject():
         raise HTTPException(status_code=500, detail=f"获取主题失败: {e}")
 
 
+# 获取主题下的聊天记录
 @router.get("/get_chatcontent_at_subjectid")
 def get_chatcontent_at_subjectid(subjectid: int):
     try:

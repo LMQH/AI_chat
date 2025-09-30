@@ -1,0 +1,144 @@
+02cba866fd8fb96f7f1b0797e4bbc55b2d57260e
+9beca2944d4a5b47d3792b90f20da4081466fb31
+c61fde97df74193a1b2c438e6e46c80403cc6f76
+c6758e631df98bca40af5ee4a33450697f591670
+6007598aa80f0d86ff13de038bc168315c3c8373 
+7d92f07526e530687dadf0d3d5f71c1bcfcf035d 
+9967c63c7187f1096ab0059a8c3ffe905ce7160e 
+dc350dabbe402d8ded69c82418c011b53327fe1e 
+35da47c2d97438d29fa195b04087112974ae2dae .gitignore
+39040f40994dda83faa003cb78a2c3d3f81e2f1a .gitignore
+e777647d60b301eb1a276432e19e1e996f7830ce .idea
+35410cacdc5e87f985c93a96520f5e11a5c822e4 .idea/.gitignore
+d703999a55bd7c0b573c52e52c5f2c075100606c .idea/inspectionProfiles
+87ea08eeadfab6d6016b3cdfab1b736858eb720f .idea/inspectionProfiles/Project_Default.xml
+105ce2da2d6447d11dfe32bfb846c3d5b199fc99 .idea/inspectionProfiles/profiles_settings.xml
+5b28ca783636f9126869cc0213ad86fc38565018 .idea/misc.xml
+a0733a5cd5ea16c411588e6e9bd52c57308c486e .idea/modules.xml
+bd7cd0dae2b06df6ffa63d900e4e1f4905e9f4c5 .idea/project.iml
+dd764916757bc15074c2bf682b59779281d755c6 Client
+8c2b732101d2c5679c3000a773ee4bb16995a630 Client/App.vue
+b5d330d136f2ef4198b59bfd92ec3dc44df9292e Client/index.html
+c1caf3606167d6c59e217eb6ef0e8f2fffc3817f Client/main.js
+a57907f2faa59dfd14bbe946825a0a8d10accc47 Client/manifest.json
+cd93980641188f3c21ca269cc795fff6bc91332a Client/pages
+304e807378fc8ea896aca467d19151ee1c3da868 Client/pages.json
+26e3a4d9870681591374be0c76b8db2761673eab Client/pages/chat
+c9815016bec628b145230025311b3ed47ba4d96d Client/pages/chat/chat - 副本 (2).vue
+6c46e185ff4f4f60e0d911991e6a57d8b0d06b8a Client/pages/chat/chat - 副本.vue
+064258035d18d1f287e204eaf25d31868ed2a0ad Client/pages/chat/chat.vue
+69ca0eb9bc422edb475f0212c64df017fed2dbdc Client/pages/my
+787b5595398af0a8b2abd6186e2b27e61904e760 Client/pages/my/my.vue
+2a2266c45f69a94e8d17157f99e7188cda8b6bab Client/static
+bd61e18d2c59b40fd7a3a2ea1d8e8695b78d9236 Client/static/icons
+a98b8bb2e946e448ec4290dd8660c882cbea4d88 Client/static/icons/arrow-up.png
+02f117c8c0117e52b85aa81d540a64c1807097ff Client/static/icons/arrow-up1.png
+11bcf638e4225bd4ad832ce36e5951cbcea27c2e Client/static/icons/camera.png
+1acfda9ea20b2a17009bef6b92a0d1589745cc2b Client/static/icons/chat-line-round.png
+2375937c496b189eb08d1925553b92b6601edc06 Client/static/icons/circle-plus.png
+84ebc241e666ee5c810ff36f86cbd4b1cac00775 Client/static/lunbo_img
+58876f608c3156102793b16f903fa2ebcfaffe61 Client/static/lunbo_img/1.webp
+252219b4a2514fed3185ff2386c3aaad22a235f8 Client/static/lunbo_img/2.jpg
+3574da284df9c23a19364c06060388df25cf63f5 Client/static/lunbo_img/3.webp
+7a4a0b215da6a4acfa828bd104bb710c94e25376 Client/static/lunbo_img/4.webp
+b7ce95bef5ad8ce12dabd5982f26ac3ec4bc95b8 Client/static/lunbo_img/5.webp
+1dce67fa9dc47e8dd7dab116b258a96a727db134 Client/static/lunbo_img/6.webp
+5116226205c0d8f417cea3ca4a06daf516e9893e Client/static/tab_img
+59d9fbab159f5429ec01321e41e3742e0589af47 Client/static/tab_img/AI.png
+f5a2916737b8494f335da39a1198175708f3acfd Client/static/tab_img/AI1.png
+7b36ab6fecd9c82d8a152811e7e18ad932d7ff7e Client/static/tab_img/home.png
+8ada7bcc2ef0e3df811ad55c17bfca563907b4ae Client/static/tab_img/home1.png
+23f64f290976ff20a31403d3fda78080ce115fdf Client/static/tab_img/info.png
+508b12402137c187d4ae980d73fa55e0b7b6452f Client/static/tab_img/info1.png
+e67f6c6a2ebb908457a31a3a2fc7b984223189f6 Client/static/tab_img/my.png
+d9c6c08084b7120b4569a5149134a0aa9ec301c1 Client/static/tab_img/my1.png
+072741824305c610a5c9fdab92e099702a7a1a29 Client/static/touxiang
+b5771e209bb677e2ebd5ff766ad5ee11790f305a Client/static/touxiang/logo.png
+5fec4f3304b8017e7da59574f948ceea6aafe116 Client/uni.promisify.adaptor.js
+b9249e9d9fab23b573e4add469e22710dce91e2a Client/uni.scss
+f47b66563e86eec26cba2528320e1bb4783a6f81 Client/unpackage
+8636cbdbfc0fbbb35cfb6b5f6191a3e13d696fca Client/unpackage/dist
+63281e930db542b258de8836200862ab1906712e Client/unpackage/dist/cache
+a684d03a48422238998e69ef11f126b4f1f9366b Client/unpackage/dist/cache/.vite
+38097d941a25d52109a7c8748dfed8ec1270b8ba Client/unpackage/dist/cache/.vite/deps
+dcb50f145e19b82d058406ff6bbab365f943976f Client/unpackage/dist/cache/.vite/deps/_metadata.json
+3dbc1ca591c0557e35b6004aeba250e6a70b56e3 Client/unpackage/dist/cache/.vite/deps/package.json
+ffae6032d9a54f14bc311180b1270259159acf3e datasets
+025fdbb5bcfee2fbc307099e403a4d73eb4789f0 datasets/AAA世界各国经济发展数据
+f9e8b5a4dcd1a6cbd3a63098ba1704c5ece86723 datasets/AAA世界各国经济发展数据/world-development-indicators
+cf312f57fdbad8f1886f30ee1c7ac809c9ac66c0 datasets/AAA世界各国经济发展数据/world-development-indicators/Country.csv
+66be97e72f62dda6a158bf46ace705e0f0132d57 datasets/AAA世界各国经济发展数据/world-development-indicators/CountryNotes.csv
+95d82ad4bfb55bf1a10b1c84a972159cd795e9e1 datasets/AAA世界各国经济发展数据/world-development-indicators/Footnotes.csv
+c8d5189eec95ad48122fb4950581c57cb26d1b44 datasets/AAA世界各国经济发展数据/world-development-indicators/Indicators.csv
+f45e38132c54a51d091d30c72ccb6b5a621e7bdc datasets/AAA世界各国经济发展数据/world-development-indicators/Series.csv
+1679079caf6bc7285befb67fdee2accdab807efc datasets/AAA世界各国经济发展数据/world-development-indicators/SeriesNotes.csv
+7272d0eaf4d600a2291ec4c630b79fb094803918 datasets/AAA世界各国经济发展数据/world-development-indicators/database.sqlite
+acb35f72195a899a5221e68d4870f7246ba571c5 datasets/AAA世界各国经济发展数据/world-development-indicators/hashes.txt
+ad070501af0e19944cc2af0e98292f0ff818ffb9 datasets/ACLED
+23c07674fc20e3a70b37dd5a037013cf1da1df55 datasets/ACLED/Asia-Pacific_aggregated_data_up_to-2025-09-13.xlsx
+25941d3c4909231162553f80c5bde3b9414a23d5 datasets/ACLED/Europe-Central-Asia_aggregated_data_up_to-2025-09-13.xlsx
+d080acd36bd1716faadbf36ce3f1f3688a394405 datasets/ACLED/number_of_political_violence_events_by_country-year_as-of-19Sep2025.xlsx
+a9854da978e616b448d36d6869d2542d7bf060bc datasets/A世界人口数据
+d123da0b9af4874ffecc919587fed2b245211d63 datasets/A世界幸福报告
+54745927850f0bfc9b4247573697aa20a4822a1c datasets/GPR
+11087cc2724539b46b2145222960eea68f16e870 datasets/GPR/data_gpr_daily_recent_.csv
+98d5c39a989d044feacf7d4e87c11e96273ae12d datasets/GPR/data_gpr_export.csv
+3745737f7a1faaede129dbe141d21ae49d293bc4 datasets/PDF文献
+be5c45d6e484409253effc03d5f82f469e30964a datasets/PDF文献/以巴冲突维基百科.pdf
+a3e9b49cabe5d1a124b51cf513ce9427dda9824b datasets/PDF文献/俄乌冲突危机外溢下的台海局势.pdf
+d2757a66c66f430a3767d14eefb61c6c971ea1b0 datasets/PDF文献/俄乌战争维基百科.pdf
+99d95c134953bcc1381adb6b4ffd6b20791f466a datasets/PDF文献/地缘政治变局下欧洲政治共同体的缘起和功能与困境.pdf
+8ee4295f90202b8e7b26e3e99df269b1cc898e60 datasets/PDF文献/臺灣問題维基百科.pdf
+8a49ad71e3a601607cb0f6c81943c0234242b25e datasets/SIPRI
+8d65dbca3325d7ba3d4ddc76623f1b5823354d9d datasets/SIPRI/SIPRI-Milex-data-1949-2024_2.xlsx
+cd7a892816c5959d7c4b1de68129796807d5be9b datasets/SIPRI/import-export-values_1950-2024.csv
+0d40f1568378969a3fe524567d7ec08c679a0f3e datasets/UCDP
+18a067bb597e30bfaa15c1fb4149a9933ca8067c datasets/UCDP/GEDEvent_v25_0_8.csv
+f3d34eb5292a0c54beaee67c9b304ddff982ce10 datasets/UCDP/GEDEvent_v25_1.csv
+98b49f21c453db434248fe09e89498c217c2b8a9 datasets/Ukraine
+d6c2ccfa395001e502012416292d0428ed47641d datasets/Ukraine/russia_ukraine_conflict.csv
+7a44a358ff55a28f363559b13c008b984c16b0c6 datasets/Ukraine/乌克兰冲突事件数据集 （2022–2025）_readme.md
+f154b1b716663c99507c32172f8fc2f7f7d01e06 datasets/alsubari_israel_palestine_war
+330e3fdc7dbbf1dd34273a898c3c158186d8c4c5 datasets/alsubari_israel_palestine_war/dataset_info.json
+22edb9718402a8f61fb6d80cdcc2afb8e1d38187 datasets/alsubari_israel_palestine_war/israel-palestine-war-train.arrow
+a79e27f6182a9a4969c7fa0b8cb58940f4d10df5 datasets/kaggle
+5616f1f3517f3080bd7c4965f29bc069bc337a00 datasets/kaggle/FSI_Data_2006_2023.csv
+dc01b2e3b845214edaa76b902b57c6d585ccdb96 datasets/world_1960_2018_GDP
+e03b2d26edcc81f38ebc2b43bd7f0cec6c0960ab datasets/world_1960_2018_GDP/countries GDP.xls
+1a3b3d5ac5b1a31e58b760a274581f1794930a97 datasets/乌克兰10MB
+391e412364a276706fe55fb5b7beb95761f79057 datasets/乌克兰10MB/output.csv
+2c74892ad0aff7baa01b6e4f4f424569690d67d8 datasets/乌克兰10MB/🇺🇦乌克兰 战争和武装冲突历史数据_readme.md
+6326eaa67dbf0996ffa24f1a7079c27619a07bca datasets/军事关系抽取表格
+f8a055899069482d6b790775c5ebb8f2688e1a88 datasets/军事关系抽取表格/military_triple.xlsx
+723393ca1f21e7be982b1b6d380d3888092aab9e datasets/军事领域知识图谱
+2ccfc21d28eae3919bd45a7e23a521693b4c1e85 datasets/军事领域知识图谱/military.json
+7b1752dc3c506bbea26722a55852bcdb50e7e20a datasets/军事领域知识图谱/军事领域知识图谱问答数据集_readme.md
+c56351fc8d52db9972689127dbb4e31271476b65 datasets/国会投票记录.zip
+1b7561e029d78e9cfcda121a24a7f7ef89b9a7f5 datasets/新浪军事新闻
+a26d6f6ee10d7d9118274477e5a44b5111c2e433 datasets/新浪军事新闻/dev.jl
+f0a11ac90b205c2144f4b63c6f6686e3bf8cff95 datasets/新浪军事新闻/train.jl
+2f1d877fb3b4d3d47a51c365f1002cd482f38488 datasets/美国军事部门.zip
+30664f1a719e9ff64cd8a933e50765d77652c9ea server
+4e32add3e7d26d46a49429dfb956f042f840bd3d server
+63e7463d961bb1ab17ea20095fb3585062e15eb4 server
+b88efbc769bbe678fc46c317c65929c098fc4f91 server
+984122c1f4a276a7010753f088817a4b85f91686 server/.env
+79b88c2a18e7f657d696265e4e90f8402d5b98be server/.idea
+af2854cc1c7c112bc5417a6dc38ef77f4a00a70f server/.idea
+c975807b3bf0a93c866ee4439ff2ad02da3df78f server/.idea
+2426e6cc54b137b32fea0fde70c713fcfde0f743 server/.idea/misc.xml
+fbd90b4d4e934f7bfe95ee38d6092b9f36c589ab server/.idea/modules.xml
+f0e6b026fa019b2cb0e0355d8f6b5a1e60117657 server/.idea/server.iml
+da5476b79250d88da6f24d27fd769667c39415a2 server/.idea/sqldialects.xml
+6c0b8635858dc7ad44b93df54b762707ce49eefc server/.idea/vcs.xml
+e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 server/__init__.py
+ec6c7355b950998e2741530a89751326d1c018a6 server/database.py
+faba7e1cf1d66582dd13ce4245ab03277ece7235 server/database.py
+8ea71d675ce8a47cc8f2924a1d58f552620f4078 server/init_db.sql
+89d147b553e4273d402219a0db2dd1a330538cd4 server/llm_utils.py
+dd6f89ef17ddbaa099e837d090a0a536056afad5 server/llm_utils.py
+e697a6f4830611e389dc90d57dbb87b444057470 server/llm_utils.py
+681ac14de5948b7bde40e85a3870e0586b385f4c server/main.py
+ea23425217d773660ea1ad36c70262ba81a0b65d server/main.py
+87ae11eebc1677162498615820996d759e26edbe server/routes.py
+ce0a823d7f9c8de5637664af567322d7984ad35a server/routes.py
