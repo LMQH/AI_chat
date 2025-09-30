@@ -1,6 +1,7 @@
 from langchain_openai import ChatOpenAI
 from database import create_connection
 
+
 connection = create_connection()
 
 
