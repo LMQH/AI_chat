@@ -31,6 +31,9 @@
 			<!-- 底部输入框 -->
 			<view class="input-bar">
 				<input class="input" v-model="inputValue" placeholder="输入消息..." />
+				<view class="upload-btn" :class="{ 'uploaded': hasAttachment }" @click="pickAndUpload">
+					<image src="/static/icons/upload.png" mode="aspectFit" class="upload-icon"></image>
+				</view>
 				<button class="send-btn" @click="sendMessage">发送</button>
 			</view>
 
@@ -48,8 +51,13 @@
 					<view class="content">
 						<!-- 文本 -->
 						<view v-if="item.flag === 1 || item.flag === 4" class="text-msg">{{ item.text }}</view>
+						<!-- 附件预览：图片或链接 -->
+						<view v-if="item.isAttachment && item.attachUrl" class="attach-block">
+							<image v-if="/\.(png|jpe?g|webp|gif)$/i.test(item.attachUrl)" :src="item.attachUrl" class="img-thumb" @click="openLink(item.attachUrl)"></image>
+							<view v-else class="link-msg" @click="openLink(item.attachUrl)">{{ item.attachUrl }}</view>
+						</view>
 						<!-- 图片 -->
-						<image v-else-if="item.flag === 2 || item.flag === 5" :src="item.img" class="img-msg">
+						<image v-else-if="item.flag === 2 || item.flag === 5" :src="item.img" class="img-thumb" @click="openLink(item.img)">
 						</image>
 						<!-- 视频 -->
 						<video v-else-if="item.flag === 3 || item.flag === 6" :src="item.v" class="video-msg"
@@ -84,6 +92,20 @@
 		            </view>
 		        </view>
 		    </scroll-view>
+		</view>
+
+		<!-- 预览弹窗 -->
+		<view v-if="previewVisible" class="preview-mask" @click="closePreview">
+			<view class="preview-dialog" @click.stop>
+				<view class="preview-header">
+					<text class="preview-title">附件预览</text>
+					<view class="preview-close" @click="closePreview">×</view>
+				</view>
+				<view class="preview-body">
+					<image v-if="/\.(png|jpe?g|webp|gif)$/i.test(previewUrl)" :src="previewUrl" mode="widthFix" class="preview-image"></image>
+					<view v-else class="preview-link" @click="openLink(previewUrl)">{{ previewUrl }}</view>
+				</view>
+			</view>
 		</view>
 
 	</view>>
@@ -122,6 +144,12 @@
 				// 流控制
 				isStreaming: false,
 				abortController: null,
+				// 附件上传
+				hasAttachment: false,
+				attachmentUrl: '',
+				// 预览弹窗
+				previewVisible: false,
+				previewUrl: '',
 				// 固定高度常量（rpx转px需乘以2，因uni-app默认rpx基于750宽屏）
 				navContentHeight: 44, // nav-content高度88rpx = 44px（750屏1rpx=0.5px）
 				inputBarHeight: 56, // input-bar总高度：82rpx(input) + 30rpx(padding) = 112rpx = 56px
@@ -182,10 +210,22 @@
 					const list = await res.json();
 					// 将历史记录渲染到 arr
 					for (const row of list) {
+						// 解析附件标记，格式：[附件] URL
+						let text = row.content || '';
+						let isAttachment = false;
+						let attachUrl = '';
+						const m = text.match(/\[附件\]\s+(\S+)/);
+						if (m && m[1]) {
+							isAttachment = true;
+							attachUrl = m[1].startsWith('/static/') ? `${this.backendBase}${m[1]}` : m[1];
+							text = text.replace(/\n?\[附件\]\s+\S+/, '').trim();
+						}
 						this.arr.push({
 							flag: row.role === 'assistant' ? 1 : 4,
 							touxiang: row.role === 'assistant' ? "/static/touxiang/logo.png" : "/static/touxiang/touxiang.png",
-							text: row.content
+							text,
+							attachUrl,
+							isAttachment
 						});
 					}
 					this.scrollToBottom();
@@ -235,11 +275,17 @@
 				const text = this.inputValue ? this.inputValue.trim() : '';
 				if (!text || this.isStreaming) return;
 
+				// 将附件合并到文本（仅作为上下文发送，不入库结构区分）
+				let finalText = text;
+				if (this.hasAttachment && this.attachmentUrl) {
+					finalText = `${text}\n\n[附件] ${this.attachmentUrl}`;
+				}
+
 				// 添加用户消息
 				this.arr.push({
 					flag: 4,
 					touxiang: "/static/touxiang/touxiang.png",
-					text: text
+					text: finalText
 				});
 
 				// 清空输入框并滚动
@@ -247,7 +293,7 @@
 				this.scrollToBottom();
 
 				try {
-					await this.startStream(text);
+					await this.startStream(finalText);
 				} catch (err) {
 					console.error('流式请求失败', err);
 					this.arr.push({
@@ -258,7 +304,58 @@
 				} finally {
 					this.isStreaming = false;
 					this.abortController = null;
+					// 发送完毕重置附件状态
+					this.hasAttachment = false;
+					this.attachmentUrl = '';
 					this.scrollToBottom();
+				}
+			},
+
+			// 选择并上传附件（图片或文件）
+			async pickAndUpload() {
+				try {
+					// H5：用 input[type=file]
+					if (typeof document !== 'undefined') {
+						const file = await new Promise((resolve) => {
+							const input = document.createElement('input');
+							input.type = 'file';
+							input.accept = 'image/*,application/pdf,application/zip,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+							input.onchange = () => resolve(input.files && input.files[0]);
+							input.click();
+						});
+						if (!file) return;
+						const form = new FormData();
+						form.append('img1', file);
+						const res = await fetch(`${this.backendBase}/upload`, { method: 'POST', body: form });
+						if (!res.ok) throw new Error(`HTTP ${res.status}`);
+						const data = await res.json();
+						// 后端返回形如 /static/xxx，补全为可访问的绝对地址
+						this.attachmentUrl = data.img ? `${this.backendBase}${data.img}` : '';
+						this.hasAttachment = !!this.attachmentUrl;
+						return;
+					}
+
+					// 其他端：使用 uni.chooseImage + uni.uploadFile
+					const chooseRes = await uni.chooseImage({ count: 1 });
+					if (!chooseRes || !chooseRes.tempFilePaths || !chooseRes.tempFilePaths[0]) return;
+					const filePath = chooseRes.tempFilePaths[0];
+					const uploadRes = await new Promise((resolve, reject) => {
+						uni.uploadFile({
+							url: `${this.backendBase}/upload`,
+							filePath,
+							name: 'img1',
+							success: (res) => resolve(res),
+							fail: reject
+						});
+					});
+					let dataObj = {};
+					try { dataObj = JSON.parse(uploadRes.data); } catch(_) {}
+					this.attachmentUrl = dataObj.img ? `${this.backendBase}${dataObj.img}` : '';
+					this.hasAttachment = !!this.attachmentUrl;
+				} catch (e) {
+					console.error('附件上传失败', e);
+					this.hasAttachment = false;
+					this.attachmentUrl = '';
 				}
 			},
 
@@ -324,7 +421,12 @@
 						}
 					}
 
-					try { await reader.cancel(); } catch(e) {}
+					// 结束读取
+ 					await reader.cancel().catch(() => {});
+					// 流式结束后自动刷新一次当前主题的历史，确保附件/图片等完整渲染
+					if (this.currentSubjectId) {
+						try { await this.openSubject(this.currentSubjectId); } catch(_) {}
+					}
 					return;
 				}
 
@@ -431,7 +533,15 @@
 			hideSidebar() {
 				this.showSidebar = false;
 				this.offsetX = 0;
-			}
+			},
+
+			// 打开链接
+			openLink(url) {
+				if (!url) return;
+				this.previewUrl = url;
+				this.previewVisible = true;
+			},
+			closePreview() { this.previewVisible = false; this.previewUrl = ''; },
 		}
 	}
 </script>
@@ -568,7 +678,7 @@
 	}
 
 	.send-btn {
-		margin-left: 14rpx;
+		margin-left: 0rpx;
 		background: #4facfe;
 		color: #fff;
 		border-radius: 8rpx;
@@ -740,5 +850,118 @@
 		width: 200px;
 		height: 120px;
 		border-radius: 8px;
+	}
+
+	/* 附件预览样式 */
+	.attach-block {
+		display: flex;
+		align-items: center;
+		margin-top: 6px;
+		padding: 8px 12px;
+		background-color: #e0e0e0;
+		border-radius: 8px;
+	}
+
+	.attach-block .img-msg {
+		width: 40px;
+		height: 40px;
+		margin-right: 10px;
+	}
+
+	.attach-block .link-msg {
+		text-decoration: underline;
+		word-break: break-all;
+		margin-top: 6px;
+	}
+
+	.upload-btn {
+		width: 46px;
+		height: 46px;
+		margin: 0 0px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 4px;
+		background:rgb(255, 255, 255);
+		transition: background-color 0.2s ease;
+	}
+
+	.upload-btn.uploaded {
+		background: #2cfff8;
+	}
+
+	.upload-icon {
+		width: 32px; /* 图标尺寸 */
+		height: 32px;
+		object-fit: contain; /* 保持比例显示在容器内 */
+	}
+
+	/* 预览弹窗样式 */
+	.preview-mask {
+		position: fixed;
+		left: 0; right: 0; top: 0; bottom: 0;
+		background: rgba(0,0,0,0.5);
+		z-index: 999;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.preview-dialog {
+		width: 80vw;
+		max-width: 640px;
+		background: #fff;
+		border-radius: 10px;
+		overflow: hidden;
+		box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+	}
+
+	.preview-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 10px 12px;
+		border-bottom: 1px solid #eee;
+	}
+
+	.preview-title { font-weight: 600; }
+
+	.preview-close {
+		width: 28px;
+		height: 28px;
+		line-height: 28px;
+		text-align: center;
+		font-size: 20px;
+		border-radius: 50%;
+		background: #f3f3f3;
+	}
+
+	.preview-body {
+		padding: 12px;
+		max-height: 70vh;
+		overflow: auto;
+	}
+
+	.preview-image {
+		width: 100%;
+		height: auto;
+		max-height: 60vh; /* 防止过高溢出 */
+		border-radius: 6px;
+		background: #fafafa;
+	}
+
+	.preview-link {
+		color: #2b6cff;
+		text-decoration: underline;
+		word-break: break-all;
+	}
+
+	.img-thumb {
+		width: 120px;
+		height: 90px;
+		border-radius: 8px;
+		object-fit: cover;
+		background: #f2f2f2;
+		cursor: pointer;
 	}
 </style>

@@ -1,15 +1,35 @@
 from fastapi import APIRouter, UploadFile, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List
 from pathlib import Path
 import mimetypes
 import os
+from uuid import uuid4
 
 from database import get_db_connection
 from llm_utils import llm_stream, llm
 
 router = APIRouter()
+
+
+# 内部工具：保存上传文件并返回 URL
+async def _save_upload(img1: UploadFile) -> JSONResponse:
+    static_dir = Path(__file__).parent / "static"
+    static_dir.mkdir(parents=True, exist_ok=True)
+    allowed = {"image/png", "image/jpeg", "image/webp", "application/pdf", "application/zip",
+               "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+    if img1.content_type and img1.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="不支持的文件类型")
+    suffix = Path(img1.filename).suffix or ""
+    safe_name = f"{uuid4().hex}{suffix}"
+    dst = static_dir / safe_name
+    content = await img1.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="文件过大，超过10MB")
+    with open(dst, "wb") as f:
+        f.write(content)
+    return JSONResponse({"img": f"/static/{safe_name}"}, status_code=200, headers={"Cache-Control": "no-store"})
 
 
 # 测试路由
@@ -36,25 +56,11 @@ def test3(data: Mydata):
     return {"data": data}
 
 
-# 测试路由，测试上传文件
-@router.post("/test4")
-async def test4(img1: UploadFile):
+# 上传文件
+@router.post("/upload")
+async def upload_lower(img1: UploadFile):
     try:
-        static_dir = Path(__file__).parent / "static"
-        static_dir.mkdir(parents=True, exist_ok=True)
-        # 简单安全处理：去除路径分隔符
-        filename = os.path.basename(img1.filename)
-        dst = static_dir / filename
-        with open(dst, "wb") as f:
-            content = await img1.read()
-            f.write(content)
-        url = f"/static/{filename}"
-        return {
-            "url": url,
-            "filename": filename,
-            "content_type": img1.content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream",
-            "size": dst.stat().st_size,
-        }
+        return await _save_upload(img1)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"文件保存失败: {e}")
 
