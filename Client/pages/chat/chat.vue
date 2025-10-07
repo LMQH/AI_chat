@@ -22,7 +22,7 @@
 
 					<!-- 右侧图标按钮 -->
 					<view class="nav-btn">
-						<image @click="MessagesPlus" src="/static/icons/circle-plus.png" mode="aspectFit" class="icon">
+						<image @click="MessagesPlus" src="/static/icons/message_plus.png" mode="aspectFit" class="icon">
 						</image>
 					</view>
 				</view>
@@ -36,12 +36,11 @@
 
 			<!-- 对话消息 -->
 			<scroll-view class="chat-container" scroll-y :scroll-with-animation="true" enable-back-to-top
-				:scroll-into-view="scrollToViewId" :style="{
-				paddingTop: (statusBarHeight + navContentHeight) + 'px', // 避开导航栏
-				paddingBottom: inputBarHeight + 'px', // 避开输入框
-				paddingTop: (statusBarHeight * 2 + navContentHeight * 2 + 30) + 'rpx', 
-				paddingBottom: (inputBarHeight * 2 + 30) + 'rpx',
-				// padding: 20rpx 20rpx 20rpx 20rpx,  // 保留左右下内边距，不影响其他方向
+				:scroll-into-view="scrollToViewId"
+				:style="{
+					height: scrollViewHeight + 'px',
+					paddingTop: (statusBarHeight + navContentHeight + extraTopGap) + 'px',
+					paddingBottom: (inputBarHeight + extraBottomGap) + 'px'
 				}">
 				<view v-for="(item, index) in arr" :key="index" :id="'msg-' + index"
 					:class="['chat-item', item.flag <= 3 ? 'ai' : 'user']">
@@ -63,16 +62,28 @@
 
 		<!-- 半透明蒙层 -->
 		<view class="overlay" v-if="offsetX>0"
-			:style="{ backgroundColor: 'rgba(0,0,0,' + (0.4 * offsetX/maxOffset) + ')' }" @click="hideSidebar"></view>
+			:style="{ backgroundColor: 'rgba(0,0,0,' + (0.4 * offsetX/maxOffset) + ')' }" @click="hideSidebar">
+		</view>
 
 		<!-- 左侧菜单 -->
 		<view class="sidebar" :style="{ left: (-70* (1 - offsetX/maxOffset)) + '%' }">
-			<view class="sidebar-header">示例聊天记录</view>
-			<scroll-view scroll-y class="sidebar-list">
-				<view v-for="(msg, index) in messages" :key="'side'+index" class="sidebar-item">
-					<text>{{ msg.from }}: {{ msg.text }}</text>
-				</view>
-			</scroll-view>
+		    <view class="sidebar-header">对话主题</view>
+		    <scroll-view scroll-y class="sidebar-list">
+		        <view v-if="subjectsLoading" class="sidebar-item">加载中...</view>
+		        <view v-else-if="subjects.length === 0" class="sidebar-item">暂无对话</view>
+		        <view v-else v-for="item in subjects" :key="'subject-'+item.id" class="sidebar-item" @click="openSubject(item.id)" :class="{ 'active': item.id === currentSubjectId, 'swiping': (subjectSwipeX[item.id]||0) < -20 }"
+		            @touchstart.stop="subjectTouchStart($event, item.id)"
+		            @touchmove.stop="subjectTouchMove($event, item.id)"
+		            @touchend.stop="subjectTouchEnd($event, item.id)"
+		        >
+		            <view class="subject-swipe" :style="{ transform: 'translateX(' + (subjectSwipeX[item.id]||0) + 'px)' }">
+		                <text class="subject-title">{{ item.title }}</text>
+		            </view>
+		            <view class="subject-delete" @click.stop="confirmDeleteSubject(item.id)">
+		                <image src="/static/icons/delete.png" mode="aspectFit" class="delete-icon"></image>
+		            </view>
+		        </view>
+		    </scroll-view>
 		</view>
 
 	</view>>
@@ -92,23 +103,31 @@
 				maxOffset: 250, // 左侧抽屉宽度
 
 				inputValue: '', // 初始化输入框
-				messages: [{
-						from: 'you',
-						text: '你好，我是AI助手'
-					},
-					{
-						from: 'me',
-						text: '很高兴见到你！'
-					}
-				],
+				messages: [],
+				subjects: [],
+				subjectsLoading: false,
+				// 侧边栏主题滑动删除交互
+				subjectSwipeX: {},
+				subjectTouchStartX: 0,
+				deleteWidth: 60, // 删除按钮宽度（px）
 				arr: [{
 					flag: 1, // AI文本消息
 					touxiang: "/static/touxiang/logo.png", // 假设这是AI头像
-					text: "欢迎使用AI助手"
+					text: "欢迎使用AI系统"
 				}],
+				// 后端基础地址（按需修改端口）
+				backendBase: 'http://localhost:8000',
+				// 当前会话主题ID，0 表示新建
+				currentSubjectId: 0,
+				// 流控制
+				isStreaming: false,
+				abortController: null,
 				// 固定高度常量（rpx转px需乘以2，因uni-app默认rpx基于750宽屏）
 				navContentHeight: 44, // nav-content高度88rpx = 44px（750屏1rpx=0.5px）
 				inputBarHeight: 56, // input-bar总高度：82rpx(input) + 30rpx(padding) = 112rpx = 56px
+				scrollViewHeight: 0, // 聊天滚动容器高度（px）
+				extraTopGap: 12, // 顶部额外留白（px）
+				extraBottomGap: 12, // 底部额外留白（px）
 				scrollToViewId: '' // 滚动锚点ID，用于scroll-view原生滚动
 			}
 		},
@@ -122,8 +141,14 @@
 						document.documentElement.style.setProperty(
 							'--status-bar-height', res.statusBarHeight + 'px');
 					}
+					// 计算滚动区域的像素高度（windowHeight - 顶部导航 - 底部输入条）
+					const topH = this.statusBarHeight + this.navContentHeight;
+					this.scrollViewHeight = Math.max(0, Math.floor(res.windowHeight - topH - this.inputBarHeight));
 				}
 			})
+		},
+		onShow() {
+			this.fetchSubjects();
 		},
 		computed: {
 			navOpacity() {
@@ -131,33 +156,201 @@
 			}
 		},
 		methods: {
-			// 对话消息实现
-			sendMessage() {
-				const text = this.inputValue?.trim();
-				if (!text) return;
+			// 拉取主题列表
+			async fetchSubjects() {
+				this.subjectsLoading = true;
+				try {
+					const res = await fetch(`${this.backendBase}/get_subject`);
+					if (!res.ok) throw new Error(`HTTP ${res.status}`);
+					this.subjects = await res.json();
+				} catch (e) {
+					console.error('获取主题失败', e);
+				} finally {
+					this.subjectsLoading = false;
+				}
+			},
+
+			// 打开主题并加载历史消息
+			async openSubject(subjectId) {
+				if (this.isStreaming) this.cancelStream();
+				this.currentSubjectId = subjectId;
+				this.arr = [];
+				try {
+					const url = `${this.backendBase}/get_chatcontent_at_subjectid?subjectid=${subjectId}`;
+					const res = await fetch(url);
+					if (!res.ok) throw new Error(`HTTP ${res.status}`);
+					const list = await res.json();
+					// 将历史记录渲染到 arr
+					for (const row of list) {
+						this.arr.push({
+							flag: row.role === 'assistant' ? 1 : 4,
+							touxiang: row.role === 'assistant' ? "/static/touxiang/logo.png" : "/static/touxiang/touxiang.png",
+							text: row.content
+						});
+					}
+					this.scrollToBottom();
+				} catch (e) {
+					console.error('获取历史消息失败', e);
+				}
+			},
+
+			// 侧边栏主题项：滑动交互
+			subjectTouchStart(e, id) {
+				this.subjectTouchStartX = e.touches && e.touches.length ? e.touches[0].pageX : e.changedTouches[0].pageX;
+			},
+			subjectTouchMove(e, id) {
+				const currentX = e.touches && e.touches.length ? e.touches[0].pageX : e.changedTouches[0].pageX;
+				const moveX = currentX - this.subjectTouchStartX;
+				let target = Math.min(0, Math.max(-this.deleteWidth, moveX));
+				this.$set(this.subjectSwipeX, id, target);
+			},
+			subjectTouchEnd(e, id) {
+				const endX = e.changedTouches && e.changedTouches.length ? e.changedTouches[0].pageX : (e.touches && e.touches.length ? e.touches[0].pageX : 0);
+				const distance = endX - this.subjectTouchStartX;
+				const finalX = distance < -20 ? -this.deleteWidth : 0; // 阈值约 -20px
+				this.$set(this.subjectSwipeX, id, finalX);
+			},
+
+			// 删除主题
+			async confirmDeleteSubject(id) {
+				try {
+					// 简单确认，可替换为弹窗组件
+					const ok = true;
+					if (!ok) return;
+					const res = await fetch(`${this.backendBase}/subject/${id}`, { method: 'DELETE' });
+					if (!res.ok) throw new Error(`HTTP ${res.status}`);
+					// 若删除的是当前会话，则清空窗口并重置 subjectId
+					if (id === this.currentSubjectId) {
+						this.currentSubjectId = 0;
+						this.arr = [];
+					}
+					await this.fetchSubjects();
+				} catch (e) {
+					console.error('删除主题失败', e);
+				}
+			},
+
+			// 对话消息实现（接入后端流式）
+			async sendMessage() {
+				const text = this.inputValue ? this.inputValue.trim() : '';
+				if (!text || this.isStreaming) return;
 
 				// 添加用户消息
 				this.arr.push({
 					flag: 4,
-					touxiang: "/static/touxiang/logo.png",
+					touxiang: "/static/touxiang/touxiang.png",
 					text: text
 				});
 
-				// 清空输入框
+				// 清空输入框并滚动
 				this.inputValue = "";
-
-				// 发送后滚动
 				this.scrollToBottom();
 
-				// 模拟 AI 回复
-				setTimeout(() => {
+				try {
+					await this.startStream(text);
+				} catch (err) {
+					console.error('流式请求失败', err);
 					this.arr.push({
 						flag: 1,
 						touxiang: "/static/touxiang/logo.png",
-						text: "这是AI的回复"
+						text: "抱歉，服务暂时不可用，请稍后再试"
 					});
-					this.scrollToBottom(); //滚动
-				}, 500);
+				} finally {
+					this.isStreaming = false;
+					this.abortController = null;
+					this.scrollToBottom();
+				}
+			},
+
+			// 启动与读取后端流
+			async startStream(userText) {
+				// H5 环境：使用 fetch 流式读取
+				if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+					const params = new URLSearchParams({
+						text: userText,
+						subjectid: String(this.currentSubjectId || 0)
+					}).toString();
+					const url = `${this.backendBase}/stream?${params}`;
+					this.abortController = new AbortController();
+					this.isStreaming = true;
+
+					// AI 占位消息
+					const aiMsg = { flag: 1, touxiang: "/static/touxiang/logo.png", text: "" };
+					this.arr.push(aiMsg);
+					this.scrollToBottom();
+
+					const res = await fetch(url, {
+						method: 'GET',
+						signal: this.abortController.signal,
+						headers: { 'Accept': 'text/plain' }
+					});
+					if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+					const reader = res.body.getReader();
+					const decoder = new TextDecoder('utf-8');
+					let received = '';
+					let gotSubjectId = false;
+
+					while (true) {
+						const { value, done } = await reader.read();
+						if (done) break;
+						received += decoder.decode(value, { stream: true });
+
+						// 首段为 subjectid
+						if (!gotSubjectId) {
+							const firstChunk = received.trim();
+							const maybeId = parseInt(firstChunk, 10);
+							if (!Number.isNaN(maybeId)) {
+								this.currentSubjectId = maybeId;
+								// 新建会话后刷新侧边栏并高亮
+								this.fetchSubjects();
+								gotSubjectId = true;
+								received = '';
+								continue;
+							}
+							const match = firstChunk.match(/^(\d+)/);
+							if (match) {
+								this.currentSubjectId = parseInt(match[1], 10);
+								this.fetchSubjects();
+								gotSubjectId = true;
+								received = firstChunk.slice(match[1].length);
+							}
+						}
+
+						if (received) {
+							aiMsg.text += received;
+							received = '';
+							this.scrollToBottom();
+						}
+					}
+
+					try { await reader.cancel(); } catch(e) {}
+					return;
+				}
+
+				// 非 H5 环境：退化为一次性请求
+				const url = `${this.backendBase}/chat?text=${encodeURIComponent(userText)}`;
+				uni.request({
+					url,
+					method: 'GET',
+					success: (res) => {
+						const content = (res && res.data && res.data.content) ? res.data.content : '';
+						this.arr.push({ flag: 1, touxiang: "/static/touxiang/logo.png", text: content || '（无响应）' });
+					},
+					fail: (err) => {
+						console.error(err);
+						this.arr.push({ flag: 1, touxiang: "/static/touxiang/logo.png", text: '请求失败' });
+					}
+				});
+			},
+
+			// 取消当前流
+			cancelStream() {
+				if (this.abortController) {
+					try { this.abortController.abort(); } catch(e) {}
+				}
+				this.isStreaming = false;
+				this.abortController = null;
 			},
 
 			// 滚动到底部
@@ -172,16 +365,23 @@
 				});
 			},
 
-			// 新建对话功能，尚未完善
+			// 新建对话功能
 			MessagesPlus() {
+				// 取消进行中的流
+				if (this.isStreaming) {
+					this.cancelStream();
+				}
+				// 将 subjectid 复位为 0，下一条消息将创建新主题
+				this.currentSubjectId = 0;
+				// 清空当前会话 UI，并放入一条提示
 				this.arr = [];
 				this.inputValue = '';
-				// 可选：添加提示
 				this.arr.push({
 					flag: 1,
 					touxiang: "/static/touxiang/logo.png",
-					text: "聊天记录已清空"
+					text: "已新建对话"
 				});
+				this.scrollToBottom();
 			},
 
 			// 左侧抽屉相关实现
@@ -406,12 +606,13 @@
 	}
 
 	.sidebar-header {
-		height: 100rpx;
-		font-size: 34rpx;
+		height: 90rpx;
+		font-size: 55rpx;
+		font-weight: bold;
 		display: flex;
 		align-items: center;
 		padding: 0 20rpx;
-		border-bottom: 1px solid #eee;
+		border-bottom: 5px solid #000000;
 	}
 
 	.sidebar-list {
@@ -420,8 +621,67 @@
 	}
 
 	.sidebar-item {
-		padding: 14rpx;
-		border-bottom: 1px solid #f0f0f0;
+		padding: 0;
+		width: 510rpx;
+		height: 40px; /* 固定条目高度，与内容/按钮对齐 */
+		border-bottom: 2px solid #a8a8a8;
+		position: relative;
+		overflow: hidden;
+		background: #fff; /* 确保背景统一 */
+	}
+
+	.sidebar-item.active {
+		background: #eef5ff;
+		color: #2b6cff;
+		font-weight: 600;
+	}
+
+	.subject-swipe {
+		position: relative; /* 内容层 */
+		z-index: 2; /* 在按钮之上 */
+		transition: transform 0.18s ease;
+		will-change: transform;
+		background: #fff;
+		display: flex;
+		align-items: center;
+		width: 100%;
+		height: 100%; /* 跟随父容器，确保与删除按钮等高 */
+	}
+
+	.subject-title {
+		display: block;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		line-height: 44px; /* 与条目高度一致，垂直居中 */
+		padding: 0 12px; /* 仅左右内边距 */
+		flex: 1; /* 让标题占据剩余空间 */
+	}
+
+	.subject-delete {
+		position: absolute;
+		right: 0;
+		top: 0;
+		bottom: 0;
+		width: 60px; /* 与 deleteWidth 保持一致 */
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: #ff5b57; /* 微信风格红色 */
+		z-index: 1; /* 在内容层下方，被覆盖，左移时显露 */
+		opacity: 0; /* 初始隐藏 */
+		transition: opacity 0.18s ease;
+	}
+
+	/* 左移超过一定阈值时，让按钮淡入 */
+	.sidebar-item.swiping .subject-delete {
+		opacity: 1;
+	}
+
+	.delete-icon {
+		width: 32rpx;
+		height: 32rpx;
+		filter: brightness(0) invert(1); /* 白色icon */
 	}
 
 	/* 对话消息部分 */
@@ -431,7 +691,6 @@
 		overflow-y: auto;
 		padding: 20rpx;
 		box-sizing: border-box;
-		height: 100%;
 	}
 
 	.chat-item {

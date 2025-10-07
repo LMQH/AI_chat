@@ -26,6 +26,14 @@ def get_db_connection():
             read_timeout=10,
             write_timeout=10,
         )
+        # 强制设置本次连接使用 utf8mb4，避免 1366 错误
+        try:
+            with connection.cursor() as _c:
+                _c.execute("SET NAMES utf8mb4")
+                _c.execute("SET character_set_connection = utf8mb4")
+                _c.execute("SET collation_connection = utf8mb4_unicode_ci")
+        except Exception as _:
+            pass
         print("成功连接到MySQL数据库")
         yield connection
     except Exception as e:

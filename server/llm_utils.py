@@ -1,15 +1,23 @@
 from langchain_openai import ChatOpenAI
 from database import get_db_connection  # 假设你已定义好 get_db_connection
+import os
 
 
 def llm(text: str):
     """
     同步调用 LLM 获取回复
     """
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not api_key:
+        raise ValueError("缺少环境变量 DEEPSEEK_API_KEY")
+
+    base_url = os.getenv("OPENAI_BASE_URL", "https://api.deepseek.com/v1")
+    model = os.getenv("OPENAI_MODEL", "deepseek-chat")
+
     chat_model = ChatOpenAI(
-        api_key="your_api_key",
-        base_url="https://api.deepseek.com/v1",
-        model="deepseek-chat"
+        api_key=api_key,
+        base_url=base_url,
+        model=model,
     )
     result = chat_model.invoke(text)
     return result.content
@@ -17,47 +25,45 @@ def llm(text: str):
 
 def llm_stream(text: str, subjectid: int):
     """
-    流式调用 LLM，并将用户和 AI 的对话保存到数据库
+    流式调用 LLM，并在结束后保存 AI 的回复到数据库。
+    注意：用户消息已在路由中入库，这里不再重复写入。
     """
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not api_key:
+        raise ValueError("缺少环境变量 DEEPSEEK_API_KEY")
+
+    base_url = os.getenv("OPENAI_BASE_URL", "https://api.deepseek.com/v1")
+    model = os.getenv("OPENAI_MODEL", "deepseek-chat")
+
     chat_model = ChatOpenAI(
-        api_key="your_api_key",
-        base_url="https://api.deepseek.com/v1",
-        model="deepseek-chat"
+        api_key=api_key,
+        base_url=base_url,
+        model=model,
     )
 
-    # 1. 先流式输出 subjectid（前端用于识别会话）
+    # 1) 先把 subjectid 作为首段发给前端
     yield str(subjectid)
 
-    # 2. 调用流式模型
+    # 2) 调用流式模型
     result = chat_model.stream(text)
     content = ""
 
-    # 3. 边生成边返回给前端
+    # 3) 边生成边返回给前端
     for chunk in result:
         if chunk.content:
             content += chunk.content
             yield chunk.content
 
-    # 4. 将对话保存到数据库（使用 with 管理连接）
+    # 4) 将 AI 回复保存到数据库
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
-                # 使用正确的字段名：content, role
-                insert_sql = """
-                    INSERT INTO chatcontent (subjectid, content, role) 
-                    VALUES (%s, %s, %s)
-                """
-
-                # 插入用户消息
-                cursor.execute(insert_sql, (subjectid, text, "user"))
-                # 插入 AI 回复
+                insert_sql = (
+                    "INSERT INTO chatcontent (subjectid, content, role) VALUES (%s, %s, %s)"
+                )
                 cursor.execute(insert_sql, (subjectid, content, "assistant"))
-
-                # 统一提交事务（两个操作一起成功或失败）
                 conn.commit()
-                print(f"对话已保存：subjectid={subjectid}")
-
+                print(f"AI 回复已保存：subjectid={subjectid}, length={len(content)}")
     except Exception as e:
-        print(f"保存对话失败: {e}")
-        # conn 会由上下文自动关闭
-        raise  # 可选择是否向上抛出
+        # 出现字符集等问题时记录日志，但不再向上抛出，避免前端体验受影响
+        print(f"保存 AI 回复失败: {e}")

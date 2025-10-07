@@ -2,9 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
+from pathlib import Path
 
 from routes import router  # 导入路由
-from database import get_db_connection
 
 # FastAPI 应用
 app = FastAPI(title="My API", version="1.0.0")
@@ -18,14 +18,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 静态资源
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# 静态资源（使用绝对路径，若不存在则创建）
+_static_dir = Path(__file__).parent / "static"
+_static_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 # 注册路由
 app.include_router(router)
 
-# 数据库连接(全局)
-connection = get_db_connection()
+# 说明：不在全局持有数据库连接，按请求使用上下文管理器获取连接
 
 
 if __name__ == "__main__":
