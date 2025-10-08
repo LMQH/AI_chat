@@ -2,10 +2,10 @@
 -- 仅包含核心功能：主题管理 + 消息存储
 
 -- 创建数据库（如果还没有）
-CREATE DATABASE IF NOT EXISTS ai_llm CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS ai_chat CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- 使用数据库
-USE ai_llm;
+USE ai_chat;
 
 -- 创建 subject 表（对话主题）
 CREATE TABLE subject (

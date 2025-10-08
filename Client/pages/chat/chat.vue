@@ -47,10 +47,13 @@
 				}">
 				<view v-for="(item, index) in arr" :key="index" :id="'msg-' + index"
 					:class="['chat-item', item.flag <= 3 ? 'ai' : 'user']">
-					<image class="avatar" :src="item.touxiang" mode="aspectFill"></image>
+					<image class="avatar" :src="item.touxiang" mode="aspectFit"></image>
 					<view class="content">
 						<!-- 文本 -->
-						<view v-if="item.flag === 1 || item.flag === 4" class="text-msg">{{ item.text }}</view>
+						<view v-if="item.flag === 1 || item.flag === 4" class="text-msg">
+							<view v-if="item.flag === 1" v-html="renderMarkdown(item.text)" class="markdown-content"></view>
+							<view v-else>{{ item.text }}</view>
+						</view>
 						<!-- 附件预览：图片或链接 -->
 						<view v-if="item.isAttachment && item.attachUrl" class="attach-block">
 							<image v-if="/\.(png|jpe?g|webp|gif)$/i.test(item.attachUrl)" :src="item.attachUrl" class="img-thumb" @click="openLink(item.attachUrl)"></image>
@@ -76,7 +79,7 @@
 		<!-- 左侧菜单 -->
 		<view class="sidebar" :style="{ left: (-70* (1 - offsetX/maxOffset)) + '%' }">
 		    <view class="sidebar-header">对话主题</view>
-		    <scroll-view scroll-y class="sidebar-list">
+			<scroll-view scroll-y class="sidebar-list">
 		        <view v-if="subjectsLoading" class="sidebar-item">加载中...</view>
 		        <view v-else-if="subjects.length === 0" class="sidebar-item">暂无对话</view>
 		        <view v-else v-for="item in subjects" :key="'subject-'+item.id" class="sidebar-item" @click="openSubject(item.id)" :class="{ 'active': item.id === currentSubjectId, 'swiping': (subjectSwipeX[item.id]||0) < -20 }"
@@ -90,8 +93,20 @@
 		            <view class="subject-delete" @click.stop="confirmDeleteSubject(item.id)">
 		                <image src="/static/icons/delete.png" mode="aspectFit" class="delete-icon"></image>
 		            </view>
-		        </view>
-		    </scroll-view>
+				</view>
+			</scroll-view>
+			
+			<!-- 侧边栏右下角刷新按钮 -->
+			<view class="sidebar-refresh-btn" :class="{ rotating: isRefreshing }" @click="refreshVectorDB">
+				<image src="/static/icons/shuaxin.png" mode="aspectFit"></image>
+			</view>
+		</view>
+
+		<!-- 自定义Toast弹窗 -->
+		<view v-if="showCustomToast" class="custom-toast">
+			<view class="toast-content" :class="toastType">
+				<text class="toast-text">{{ toastMessage }}</text>
+			</view>
 		</view>
 
 		<!-- 预览弹窗 -->
@@ -134,7 +149,7 @@
 				deleteWidth: 60, // 删除按钮宽度（px）
 				arr: [{
 					flag: 1, // AI文本消息
-					touxiang: "/static/touxiang/logo.png", // 假设这是AI头像
+					touxiang: "/static/touxiang/agent.png", // 假设这是AI头像
 					text: "欢迎使用AI系统"
 				}],
 				// 后端基础地址（按需修改端口）
@@ -156,7 +171,13 @@
 				scrollViewHeight: 0, // 聊天滚动容器高度（px）
 				extraTopGap: 12, // 顶部额外留白（px）
 				extraBottomGap: 12, // 底部额外留白（px）
-				scrollToViewId: '' // 滚动锚点ID，用于scroll-view原生滚动
+				scrollToViewId: '', // 滚动锚点ID，用于scroll-view原生滚动
+				// 向量数据库刷新
+				isRefreshing: false, // 是否正在刷新向量数据库
+				// 自定义提示弹窗
+				showCustomToast: false,
+				toastMessage: '',
+				toastType: 'success' // success, error
 			}
 		},
 		onLoad() {
@@ -184,6 +205,150 @@
 			}
 		},
 		methods: {
+			// 刷新向量数据库
+			async refreshVectorDB() {
+				if (this.isRefreshing) {
+					return; // 防止重复点击
+				}
+				
+				this.isRefreshing = true;
+				
+				try {
+					// 调用后端API智能刷新向量数据库
+					const response = await uni.request({
+						url: `${this.backendBase}/refresh_vector_db`,
+						method: 'POST',
+						timeout: 300000 // 超时时间，因为重建可能需要较长时间
+					});
+					
+					if (response.data && response.data.success) {
+						// 根据操作类型显示不同的成功消息
+						const action = response.data.action;
+						let title = '知识库刷新成功';
+						
+						if (action === 'reload') {
+							title = '知识库已重新加载';
+						} else if (action === 'rebuild') {
+							title = '知识库已重建完成';
+						} else if (action === 'update') {
+							title = '知识库已更新完成';
+						}
+						
+						// 使用自定义Toast，显示处理时间
+						const elapsedTime = response.data.elapsed_time || 0;
+						const timeText = elapsedTime > 0 ? ` (耗时: ${elapsedTime}秒)` : '';
+						
+						this.showCustomToast = true;
+						this.toastMessage = title + timeText;
+						this.toastType = 'success';
+						
+						// 3秒后自动关闭
+						setTimeout(() => {
+							this.showCustomToast = false;
+						}, 3000);
+					} else {
+						throw new Error(response.data?.message || '刷新失败');
+					}
+					
+				} catch (error) {
+					console.error('刷新向量数据库失败:', error);
+					
+					// 使用自定义Toast显示错误
+					this.showCustomToast = true;
+					this.toastMessage = '刷新失败: ' + (error.message || '未知错误');
+					this.toastType = 'error';
+					
+					// 4秒后自动关闭
+					setTimeout(() => {
+						this.showCustomToast = false;
+					}, 4000);
+				} finally {
+					// RAG重建完成后停止旋转
+					this.isRefreshing = false;
+				}
+			},
+			
+			// Markdown 渲染方法
+			renderMarkdown(text) {
+				if (!text) return '';
+				
+				// 转义 HTML 特殊字符
+				const escapeHtml = (str) => {
+					return str
+						.replace(/&/g, '&amp;')
+						.replace(/</g, '&lt;')
+						.replace(/>/g, '&gt;')
+						.replace(/"/g, '&quot;')
+						.replace(/'/g, '&#39;');
+				};
+				
+				// 处理 Markdown 语法
+				let html = text;
+				
+				// 先处理代码块，避免内部内容被其他规则影响
+				html = html.replace(/```([\s\S]*?)```/g, (match, code) => {
+					return `<pre><code>${escapeHtml(code.trim())}</code></pre>`;
+				});
+				
+				// 处理行内代码
+				html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+				
+				// 转义剩余内容
+				html = escapeHtml(html);
+				
+				// 恢复代码块（避免被转义）
+				html = html.replace(/&lt;pre&gt;&lt;code&gt;(.*?)&lt;\/code&gt;&lt;\/pre&gt;/g, '<pre><code>$1</code></pre>');
+				html = html.replace(/&lt;code&gt;(.*?)&lt;\/code&gt;/g, '<code>$1</code>');
+				
+				// 标题
+				html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+				html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+				html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+				
+				// 粗体和斜体
+				html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+				html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+				
+				// 链接
+				html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+				
+				// 列表处理
+				const lines = html.split('\n');
+				let inList = false;
+				let result = [];
+				
+				for (let i = 0; i < lines.length; i++) {
+					const line = lines[i];
+					const isListItem = /^(\*|\-|\d+\.)\s/.test(line);
+					
+					if (isListItem) {
+						if (!inList) {
+							result.push('<ul>');
+							inList = true;
+						}
+						const content = line.replace(/^(\*|\-|\d+\.)\s/, '');
+						result.push(`<li>${content}</li>`);
+					} else {
+						if (inList) {
+							result.push('</ul>');
+							inList = false;
+						}
+						result.push(line);
+					}
+				}
+				
+				if (inList) {
+					result.push('</ul>');
+				}
+				
+				html = result.join('\n');
+				
+				// 换行
+				html = html.replace(/\n/g, '<br>');
+				
+				return html;
+			},
+			
 			// 拉取主题列表
 			async fetchSubjects() {
 				this.subjectsLoading = true;
@@ -222,7 +387,7 @@
 						}
 						this.arr.push({
 							flag: row.role === 'assistant' ? 1 : 4,
-							touxiang: row.role === 'assistant' ? "/static/touxiang/logo.png" : "/static/touxiang/touxiang.png",
+							touxiang: row.role === 'assistant' ? "/static/touxiang/agent.png" : "/static/touxiang/touxiang.png",
 							text,
 							attachUrl,
 							isAttachment
@@ -298,7 +463,7 @@
 					console.error('流式请求失败', err);
 					this.arr.push({
 						flag: 1,
-						touxiang: "/static/touxiang/logo.png",
+						touxiang: "/static/touxiang/agent.png",
 						text: "抱歉，服务暂时不可用，请稍后再试"
 					});
 				} finally {
@@ -372,7 +537,7 @@
 					this.isStreaming = true;
 
 					// AI 占位消息
-					const aiMsg = { flag: 1, touxiang: "/static/touxiang/logo.png", text: "" };
+					const aiMsg = { flag: 1, touxiang: "/static/touxiang/agent.png", text: "" };
 					this.arr.push(aiMsg);
 					this.scrollToBottom();
 
@@ -437,11 +602,11 @@
 					method: 'GET',
 					success: (res) => {
 						const content = (res && res.data && res.data.content) ? res.data.content : '';
-						this.arr.push({ flag: 1, touxiang: "/static/touxiang/logo.png", text: content || '（无响应）' });
+						this.arr.push({ flag: 1, touxiang: "/static/touxiang/agent.png", text: content || '（无响应）' });
 					},
 					fail: (err) => {
 						console.error(err);
-						this.arr.push({ flag: 1, touxiang: "/static/touxiang/logo.png", text: '请求失败' });
+						this.arr.push({ flag: 1, touxiang: "/static/touxiang/agent.png", text: '请求失败' });
 					}
 				});
 			},
@@ -480,7 +645,7 @@
 				this.inputValue = '';
 				this.arr.push({
 					flag: 1,
-					touxiang: "/static/touxiang/logo.png",
+					touxiang: "/static/touxiang/agent.png",
 					text: "已新建对话"
 				});
 				this.scrollToBottom();
@@ -823,6 +988,15 @@
 		width: 40px;
 		height: 40px;
 		border-radius: 50%;
+		flex-shrink: 0;
+		object-fit: cover;
+	}
+
+	/* AI头像背景色和大小 */
+	.chat-item.ai .avatar {
+		background-color: #e0e0e0;
+		width: 40px;
+		height: 40px;
 	}
 
 	.content {
@@ -830,14 +1004,111 @@
 		margin: 0 10px;
 	}
 
+	/* AI 消息框 */
+	.chat-item.ai .content {
+		max-width: 90%;
+		margin-right: 5px;
+		margin-left: 10px;
+	}
+
+	/* 用户消息框 */
+	.chat-item.user .content {
+		max-width: 90%;
+		margin-left: 5px;
+		margin-right: 10px;
+	}
+
 	.text-msg {
 		padding: 8px 12px;
 		border-radius: 8px;
 		background-color: #f0f0f0;
+		font-size: 14px;
+		line-height: 1.4;
 	}
 
 	.chat-item.user .text-msg {
-		background-color: #a0e75a;
+		background-color: #dddddd;
+	}
+
+	/* Markdown 样式 */
+	.markdown-content {
+		line-height: 1.4;
+		font-size: 14px;
+	}
+
+	.markdown-content h1 {
+		font-size: 1.3em;
+		font-weight: bold;
+		margin: 8px 0 6px 0;
+		color: #333;
+	}
+
+	.markdown-content h2 {
+		font-size: 1.2em;
+		font-weight: bold;
+		margin: 6px 0 4px 0;
+		color: #444;
+	}
+
+	.markdown-content h3 {
+		font-size: 1.1em;
+		font-weight: bold;
+		margin: 4px 0 2px 0;
+		color: #555;
+	}
+
+	.markdown-content strong {
+		font-weight: bold;
+		color: #333;
+	}
+
+	.markdown-content em {
+		font-style: italic;
+		color: #666;
+	}
+
+	.markdown-content code {
+		background-color: #f5f5f5;
+		padding: 2px 4px;
+		border-radius: 3px;
+		font-family: 'Courier New', monospace;
+		font-size: 0.85em;
+		color: #d63384;
+	}
+
+	.markdown-content pre {
+		background-color: #f8f9fa;
+		border: 1px solid #e9ecef;
+		border-radius: 6px;
+		padding: 12px;
+		margin: 8px 0;
+		overflow-x: auto;
+	}
+
+	.markdown-content pre code {
+		background-color: transparent;
+		padding: 0;
+		color: #333;
+	}
+
+	.markdown-content a {
+		color: #007bff;
+		text-decoration: none;
+	}
+
+	.markdown-content a:hover {
+		text-decoration: underline;
+	}
+
+	.markdown-content ul {
+		margin-top: 2px;     /* 只调整顶部间距 */
+    	margin-bottom: 2px;  /* 只调整底部间距 */
+		padding-left: 5px;
+	}
+
+	.markdown-content li {
+		margin: 2px 0;
+		list-style-type: disc;
 	}
 
 	.img-msg {
@@ -963,5 +1234,86 @@
 		object-fit: cover;
 		background: #f2f2f2;
 		cursor: pointer;
+	}
+
+	/* 侧边栏右下角刷新按钮 */
+	.sidebar-refresh-btn {
+		position: absolute;
+		bottom: 30rpx;
+		right: 30rpx;
+		width: 60rpx;
+		height: 60rpx;
+		background: rgba(222, 222, 222, 0.8);
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+		z-index: 10;
+		transition: all 0.3s ease;
+	}
+
+	.sidebar-refresh-btn:active {
+		transform: scale(0.9);
+		background: rgba(180, 180, 180, 0.9);
+	}
+
+	.sidebar-refresh-btn image {
+		width: 35rpx;
+		height: 35rpx;
+		filter: brightness(0) invert(0.3); /* 深灰色图标 */
+	}
+
+	.sidebar-refresh-btn.rotating {
+		background: #afccf7;
+		box-shadow: 0 2rpx 8rpx rgba(150, 200, 150, 0.3);
+	}
+
+	.sidebar-refresh-btn.rotating image {
+		animation: rotate 1s linear infinite;
+	}
+
+	@keyframes rotate {
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	/* 自定义Toast样式 */
+	.custom-toast {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		z-index: 9999;
+		pointer-events: none;
+	}
+
+	.toast-content {
+		background: rgba(0, 0, 0, 0.8);
+		border-radius: 12rpx;
+		padding: 24rpx 40rpx;
+		min-width: 300rpx;
+		max-width: 600rpx;
+		text-align: center;
+		box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3);
+	}
+
+	.toast-content.success {
+		background: rgba(0, 0, 0, 0.8);
+	}
+
+	.toast-content.error {
+		background: rgba(220, 53, 69, 0.9);
+	}
+
+	.toast-text {
+		color: white;
+		font-size: 28rpx;
+		line-height: 1.4;
+		word-break: break-all;
 	}
 </style>
