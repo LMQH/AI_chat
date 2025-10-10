@@ -67,9 +67,12 @@ async def upload_lower(img1: UploadFile):
 
 
 # 简单聊天
-@router.get("/chat")
-def chat(text: str):
+@router.post("/chat")
+def chat(request: dict):
     try:
+        text = request.get("text", "")
+        if not text:
+            raise HTTPException(status_code=400, detail="缺少text参数")
         ai_content = llm(text)
         return {"code": 2000, "content": ai_content}
     except Exception as e:
@@ -79,13 +82,44 @@ def chat(text: str):
 # 提取主题（去除非文本字符）
 def extract_clean_title(raw_title: str) -> str:
     """清理 LLM 返回的主题，只保留纯文本"""
-    return raw_title.strip().strip('\"\'').replace('\n', '').replace('\r', '')[:100]
+    import re
+    
+    # 去除各种标签和多余内容
+    title = raw_title.strip()
+    
+    # 去除<think>标签及其内容
+    title = re.sub(r'<think>.*?</think>', '', title, flags=re.DOTALL)
+    
+    # 去除其他常见标签
+    title = re.sub(r'<[^>]+>', '', title)
+    
+    # 去除引号和换行符
+    title = title.strip().strip('\"\'').replace('\n', '').replace('\r', '')
+    
+    # 去除多余的空格
+    title = re.sub(r'\s+', ' ', title).strip()
+    
+    # 限制长度，确保主题简洁
+    if len(title) > 20:
+        title = title[:20]
+    
+    # 如果主题为空或太短，使用默认值
+    if not title or len(title) < 2:
+        title = "新对话"
+    
+    return title
 
 
 # 流式对话
-@router.get("/stream")
-def stream(text: str, subjectid: int):
+@router.post("/stream")
+def stream(request: dict):
     try:
+        text = request.get("text", "")
+        subjectid = request.get("subjectid", 0)
+        
+        if not text:
+            raise HTTPException(status_code=400, detail="缺少text参数")
+        
         # 确保subjectid有效
         final_subjectid = subjectid
         
@@ -94,8 +128,12 @@ def stream(text: str, subjectid: int):
                 with conn.cursor() as cursor:
                     # 如果是新对话，创建主题
                     if subjectid == 0:
-                        raw_title = llm(f"用户的对话内容是:{text},请帮我生成一个对话主题,要求概括对话内容，只返回主题文字,文字越少越好")
-                        title = extract_clean_title(raw_title)
+                        try:
+                            raw_title = llm(f"对话内容：{text}\n请严格按以下要求生成主题：\n内容要求：需准确概括对话核心信息（如事件、讨论话题、核心诉求等），能让他人通过主题快速知晓对话大致内容；禁止仅用单一时间名词（如 '2014 年''周一'），禁止仅用无意义的宽泛表述（如 '日常对话''问题讨论'）。\n格式要求：仅返回纯文字主题，字数控制在 5-10 字，使用短语或名词组合（如 '讨论产品定价''咨询旅行攻略'）；绝对禁止添加 '主题：''答：' 等任何前缀 / 后缀，禁止出现标点符号（除必要的连接符 '-' 外）。\n输出要求：仅输出最终主题文本，不附带任何额外说明、解释或补充文字。")
+                            title = extract_clean_title(raw_title)
+                        except Exception as title_err:
+                            print(f"生成主题失败: {title_err}")
+                            title = "新对话"  # 使用默认主题
 
                         # 插入主题
                         insert_subject_sql = "INSERT INTO subject (title) VALUES (%s)"
@@ -121,8 +159,12 @@ def stream(text: str, subjectid: int):
                         cursor.execute("SELECT id FROM subject WHERE id = %s", (subjectid,))
                         if not cursor.fetchone():
                             print(f"主题ID {subjectid} 不存在，创建新主题")
-                            raw_title = llm(f"用户的对话内容是:{text},请帮我生成一个对话主题,只返回主题文字")
-                            title = extract_clean_title(raw_title)
+                            try:
+                                raw_title = llm(f"对话内容：{text}\n请严格按以下要求生成主题：\n内容要求：需准确概括对话核心信息（如事件、讨论话题、核心诉求等），能让他人通过主题快速知晓对话大致内容；禁止仅用单一时间名词（如 '2014 年''周一'），禁止仅用无意义的宽泛表述（如 '日常对话''问题讨论'）。\n格式要求：仅返回纯文字主题，字数控制在 5-10 字，使用短语或名词组合（如 '讨论产品定价''咨询旅行攻略'）；绝对禁止添加 '主题：''答：' 等任何前缀 / 后缀，禁止出现标点符号（除必要的连接符 '-' 外）。\n输出要求：仅输出最终主题文本，不附带任何额外说明、解释或补充文字。")
+                                title = extract_clean_title(raw_title)
+                            except Exception as title_err:
+                                print(f"生成主题失败: {title_err}")
+                                title = "新对话"  # 使用默认主题
                             cursor.execute("INSERT INTO subject (title) VALUES (%s)", (title,))
                             final_subjectid = cursor.lastrowid
                         
@@ -146,6 +188,7 @@ def stream(text: str, subjectid: int):
         )
 
     except Exception as e:
+        print(f"流式对话异常: {e}")
         raise HTTPException(status_code=500, detail=f"流式对话失败: {e}")
 
 

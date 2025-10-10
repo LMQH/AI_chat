@@ -317,14 +317,18 @@ class RAGService:
                 
             context = "\n\n".join([doc.page_content for doc in relevant_docs])
             
-            return f"""基于以下专业知识库信息回答用户问题：
+            return f"""请回答用户的问题。在回答时，请按以下优先级：
 
-专业知识库信息：
+1. 首先参考以下专业知识库信息（如果相关）：
 {context}
+
+2. 结合您的通用知识库进行补充和扩展
+3. 如果专业知识库信息不足或不够准确，请优先使用您的通用知识
+4. 确保回答准确、详细、有用
 
 用户问题：{user_query}
 
-请结合专业知识库信息给出准确、详细的回答。如果知识库信息不足以完全回答问题，可以结合您的通用知识进行补充。"""
+请基于以上信息给出完整的回答。"""
             
         except Exception as e:
             print(f"查询增强失败: {e}")
@@ -595,21 +599,23 @@ def check_and_initialize_vector_db():
 def enhance_query_with_rag(user_query: str) -> str:
     """使用 RAG 增强用户查询"""
     try:
+        # 如果RAG服务未初始化，尝试初始化
         if not _rag_initialized:
+            print("RAG服务未初始化，尝试初始化...")
             initialize_rag_service()
         
         service = get_rag_service()
         if service.is_available():
             return service.enhance_query(user_query)
         else:
+            print("RAG服务不可用，使用基础查询")
             return f"""用户问题：{user_query}
 
 请基于您的知识回答用户的问题。"""
     except Exception as e:
         print(f"RAG 增强查询失败: {e}")
-        return f"""用户问题：{user_query}
-
-请基于您的知识回答用户的问题。"""
+        # 返回原始查询，不进行增强
+        return user_query
 
 def get_rag_status():
     """获取 RAG 服务状态"""

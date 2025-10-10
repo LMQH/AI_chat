@@ -94,14 +94,18 @@ class SimpleRAGService:
 注意：在简化知识库中未找到相关信息，请基于您的通用知识回答用户的问题。"""
                 
             context = "\n\n".join([doc['content'] for doc in relevant_docs])
-            enhanced_query = f"""基于以下简化知识库信息回答用户问题：
+            enhanced_query = f"""请回答用户的问题。在回答时，请按以下优先级：
 
-简化知识库信息：
+1. 首先参考以下简化知识库信息（如果相关）：
 {context}
+
+2. 结合您的通用知识库进行补充和扩展
+3. 如果知识库信息不足或不够准确，请优先使用您的通用知识
+4. 确保回答准确、详细、有用
 
 用户问题：{user_query}
 
-请结合知识库信息给出准确、详细的回答。如果知识库信息不足以完全回答问题，可以结合您的通用知识进行补充。"""
+请基于以上信息给出完整的回答。"""
             
             print(f"简化 RAG 增强成功，检索到 {len(relevant_docs)} 个相关文档")
             return enhanced_query

@@ -17,13 +17,37 @@
 						</image>
 					</view>
 
-					<!-- 中间标题 -->
-					<view class="nav-title">AI</view>
+					<!-- 中间标题和身份选择 -->
+					<view class="nav-title-container">
+						<view class="nav-title">AI</view>
+						<view class="identity-selector" @click="showIdentitySelector = !showIdentitySelector">
+							<text class="identity-name">{{ currentIdentityName }}</text>
+							<image src="/static/icons/arrow-down.png" mode="aspectFit" class="arrow-icon"></image>
+						</view>
+					</view>
 
 					<!-- 右侧图标按钮 -->
 					<view class="nav-btn">
 						<image @click="MessagesPlus" src="/static/icons/message_plus.png" mode="aspectFit" class="icon">
 						</image>
+					</view>
+				</view>
+			</view>
+
+			<!-- 身份选择下拉菜单 -->
+			<view class="identity-dropdown" v-if="showIdentitySelector" @click.stop>
+				<view class="identity-list">
+					<view v-for="identity in availableIdentities" :key="identity.id" 
+						class="identity-item" 
+						:class="{ 'active': identity.id === currentIdentityId }"
+						@click="selectIdentity(identity.id)">
+						<view class="identity-info">
+							<text class="identity-item-name">{{ identity.name }}</text>
+							<text class="identity-item-desc">{{ identity.description }}</text>
+						</view>
+						<view v-if="identity.id === currentIdentityId" class="check-icon">
+							<image src="/static/icons/check.png" mode="aspectFit"></image>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -143,6 +167,12 @@
 				messages: [],
 				subjects: [],
 				subjectsLoading: false,
+				
+				// 身份选择相关
+				showIdentitySelector: false,
+				availableIdentities: [],
+				currentIdentityId: 'default',
+				currentIdentityName: '通用AI助手',
 				// 侧边栏主题滑动删除交互
 				subjectSwipeX: {},
 				subjectTouchStartX: 0,
@@ -272,6 +302,7 @@
 			renderMarkdown(text) {
 				if (!text) return '';
 				
+				
 				// 转义 HTML 特殊字符
 				const escapeHtml = (str) => {
 					return str
@@ -293,8 +324,13 @@
 				// 处理行内代码
 				html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>');
 				
-				// 转义剩余内容
+				// 进行HTML转义，确保安全性
 				html = escapeHtml(html);
+				
+				// 处理转义后的思考标签：将 &lt;think&gt;和 &lt;/think&gt;替换为思考块
+				html = html.replace(/&lt;think&gt;([\s\S]*?)&lt;\/think&gt;/gi, (match, content) => {
+					return `<div class="thinking-block" style="background-color: #ffffff; color: #999999; border: 2px solid #666666; padding: 20rpx; border-radius: 12rpx; margin: 16rpx 0; font-style: italic; font-weight: 600;">${content.trim()}</div>`;
+				});
 				
 				// 恢复代码块（避免被转义）
 				html = html.replace(/&lt;pre&gt;&lt;code&gt;(.*?)&lt;\/code&gt;&lt;\/pre&gt;/g, '<pre><code>$1</code></pre>');
@@ -528,11 +564,7 @@
 			async startStream(userText) {
 				// H5 环境：使用 fetch 流式读取
 				if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
-					const params = new URLSearchParams({
-						text: userText,
-						subjectid: String(this.currentSubjectId || 0)
-					}).toString();
-					const url = `${this.backendBase}/stream?${params}`;
+					const url = `${this.backendBase}/stream`;
 					this.abortController = new AbortController();
 					this.isStreaming = true;
 
@@ -542,9 +574,17 @@
 					this.scrollToBottom();
 
 					const res = await fetch(url, {
-						method: 'GET',
+						method: 'POST',
 						signal: this.abortController.signal,
-						headers: { 'Accept': 'text/plain' }
+						headers: { 
+							'Accept': 'text/plain',
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							text: userText,
+							subjectid: this.currentSubjectId || 0,
+							identity_id: this.currentIdentityId
+						})
 					});
 					if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
@@ -596,10 +636,16 @@
 				}
 
 				// 非 H5 环境：退化为一次性请求
-				const url = `${this.backendBase}/chat?text=${encodeURIComponent(userText)}`;
+				const url = `${this.backendBase}/chat`;
 				uni.request({
 					url,
-					method: 'GET',
+					method: 'POST',
+					data: {
+						text: userText
+					},
+					header: {
+						'Content-Type': 'application/json'
+					},
 					success: (res) => {
 						const content = (res && res.data && res.data.content) ? res.data.content : '';
 						this.arr.push({ flag: 1, touxiang: "/static/touxiang/agent.png", text: content || '（无响应）' });
@@ -893,6 +939,29 @@
 	.sidebar-list {
 		flex: 1;
 		padding: 10rpx;
+		overflow-y: auto;
+		/* 自定义滚动条样式 */
+		scrollbar-width: thin;
+		scrollbar-color: #c0c0c0 #f0f0f0;
+	}
+	
+	/* Webkit浏览器滚动条样式 */
+	.sidebar-list::-webkit-scrollbar {
+		width: 8px;
+	}
+	
+	.sidebar-list::-webkit-scrollbar-track {
+		background: #f0f0f0;
+		border-radius: 4px;
+	}
+	
+	.sidebar-list::-webkit-scrollbar-thumb {
+		background: #c0c0c0;
+		border-radius: 4px;
+	}
+	
+	.sidebar-list::-webkit-scrollbar-thumb:hover {
+		background: #a0a0a0;
 	}
 
 	.sidebar-item {
@@ -1315,5 +1384,39 @@
 		font-size: 28rpx;
 		line-height: 1.4;
 		word-break: break-all;
+	}
+
+	/* 思考块样式 - 使用更高优先级的选择器 */
+	.markdown-content .thinking-block,
+	.markdown-content div.thinking-block,
+	.thinking-block {
+		background-color: #ffffff !important;
+		border: 2px solid #666666 !important;
+		border-left: 6px solid #666666 !important;
+		padding: 20rpx !important;
+		color: #999999 !important;
+		font-weight: 600 !important;
+		border-radius: 12rpx !important;
+		margin: 16rpx 0 !important;
+		font-size: 26rpx !important;
+		line-height: 1.8 !important;
+		font-style: italic !important;
+		box-shadow: 0 4rpx 8rpx rgba(0, 123, 255, 0.2) !important;
+		position: relative !important;
+		display: block !important;
+		background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%) !important;
+	}
+	
+	.markdown-content .thinking-block::before {
+		content: "💭" !important;
+		position: absolute !important;
+		left: 8rpx !important;
+		top: 8rpx !important;
+		font-size: 20rpx !important;
+		opacity: 0.6 !important;
+	}
+	
+	.markdown-content .thinking-block {
+		padding-left: 40rpx !important;
 	}
 </style>
