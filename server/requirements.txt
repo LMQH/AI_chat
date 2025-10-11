@@ -1,11 +1,30 @@
+# pip install -r requirements.txt
+
+# Web框架和服务器
 fastapi==0.104.1
-uvicorn==0.24.0
+uvicorn[standard]==0.24.0
+
+# 数据库
 pymysql==1.1.0
+
+# 环境配置
+python-dotenv==1.0.0
+
+# HTTP请求
+requests==2.31.0
+
+# 数据验证
+pydantic==2.5.0
+
+# RAG和AI相关
 langchain==0.1.0
-langchain-openai==0.0.2
 langchain-community==0.0.10
-langchain-huggingface==0.0.1
+sentence-transformers==2.2.2
 faiss-cpu==1.7.4
 pypdf==3.17.4
-sentence-transformers==2.2.2
-python-dotenv==1.0.0
+
+# 数据处理
+pandas==2.1.4
+
+# 其他工具
+pathlib2==2.3.7

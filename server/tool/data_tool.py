@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 CSV到LLaMA-Factory格式转换器
-生成符合llama-factory要求的Alpaca格式数据
+生成符合llama-factory要求的格式数据
 """
 
 import pandas as pd

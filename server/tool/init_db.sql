@@ -1,6 +1,3 @@
--- AI 聊天系统数据库初始化脚本（简化版）
--- 仅包含核心功能：主题管理 + 消息存储
-
 -- 创建数据库（如果还没有）
 CREATE DATABASE IF NOT EXISTS ai_chat CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
