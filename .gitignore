@@ -1,3 +1,4 @@
 datasets/
 FlagEmbedding/
 server/.env
+.idea/
